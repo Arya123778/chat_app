@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'channels',
     'accounts',
     'chat',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 MIDDLEWARE = [
@@ -126,11 +127,16 @@ REST_FRAMEWORK={
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
 }
+import os
 from datetime import timedelta
 SIMPLE_JWT={
     'ACCESS_TOKEN_LIFETIME':timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'BLACKLIST_AFTER_ROTATION':True,
+    'ROTATE_REFRESH_TOKEN':True,
 }
+MEDIA_URL='/media/'
+MEDIA_ROOT=os.path.join(BASE_DIR, 'media')
 CHANNEL_LAYER={
     'default':{
         'BACKEND':'channels_redis.core.RedisChannelLayer',
@@ -139,3 +145,4 @@ CHANNEL_LAYER={
         },
     }
 }
+AUTH_USER_MODEL = 'accounts.User'
