@@ -29,7 +29,7 @@ class JoinRoomView(APIView):
     def post(self,request,pk):
         try:
             room=Room.objects.get(pk=pk)
-            room.members.all(request.user)
+            room.members.add(request.user)
             return Response({'detail':f'Joined Room:{room.name}'})
         except Room.DoesNotExist:
             return Response({'detail':f'Room not found'}, status=status.HTTP_404_NOT_FOUND)

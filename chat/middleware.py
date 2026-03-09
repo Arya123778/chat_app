@@ -1,14 +1,21 @@
 from urllib.parse import parse_qs
 from django.contrib.auth.models import AnonymousUser
-from django.contrib.auth import get_user_model
+
+# Import AccessToken and database_sync_to_async at module level (they work fine here)
 from rest_framework_simplejwt.tokens import AccessToken
-from channels.db import database_sync_to_async
+from channels.db import database_sync_to_async  
 from channels.middleware import BaseMiddleware
 
-User=get_user_model()
+# Fixed: Don't call get_user_model() at module level - use inside async function instead.
+# Changed from: from django.contrib.auth import get_user_model (with User = get_user_model())
+# To avoid "get_user_model() must be called inside an async function or after Django setup"
 
-@database_sync_to_async
+@database_sync_to_async  
 def get_user_from_token(token_key):
+    # Import user model inside the async function to avoid issues before Django setup is complete
+    from django.contrib.auth import get_user_model
+    
+    User = get_user_model()
     try:
         token=AccessToken(token_key)
         user_id=token['user_id']

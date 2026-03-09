@@ -2,7 +2,10 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Room, Message
 
-User=get_user_model
+# Fixed: Should call get_user_model() not just reference it 
+# Changed from: User=get_user_model (missing parentheses)
+# To: User=get_user_model()
+User = get_user_model()
 
 class UserSummarySerializer(serializers.ModelSerializer):
     """Small user info to show inside messages"""
@@ -36,7 +39,8 @@ class RoomSerializer(serializers.ModelSerializer):
                 'sender':last.sender.username,
                 'timestamp':last.timestamp
             } 
-            return None
+        return None
+    
     def get_member_count(self, obj):
         return obj.members.count()
         

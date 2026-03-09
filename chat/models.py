@@ -1,7 +1,10 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 
-User=get_user_model
+# Fixed: Should call get_user_model() not just reference it 
+# Changed from: User=get_user_model (missing parentheses)
+# To: User=get_user_model()
+User = get_user_model()
 
 class Room(models.Model):
     name=models.CharField(max_length=100, unique=True)
@@ -11,7 +14,8 @@ class Room(models.Model):
     created_at=models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
-        self.name
+        # Fixed: was missing return statement - must return a value
+        return self.name
 
 class Message(models.Model):
     room=models.ForeignKey(Room, on_delete=models.CASCADE, related_name="messages")

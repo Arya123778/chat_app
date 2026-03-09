@@ -137,7 +137,7 @@ SIMPLE_JWT={
 }
 MEDIA_URL='/media/'
 MEDIA_ROOT=os.path.join(BASE_DIR, 'media')
-CHANNEL_LAYER={
+CHANNEL_LAYERS={
     'default':{
         'BACKEND':'channels_redis.core.RedisChannelLayer',
         'CONFIG':{
