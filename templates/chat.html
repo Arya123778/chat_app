@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #1a1a2e; color: white; height: 100vh; display: flex; flex-direction: column; }
+        
+        #auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; gap: 15px; }
+        #auth-screen h1 { font-size: 2rem; color: #e94560; margin-bottom: 20px; }
+        #auth-screen input { padding: 12px; width: 300px; border-radius: 8px; border: none; background: #16213e; color: white; font-size: 1rem; }
+        #auth-screen button { padding: 12px 40px; background: #e94560; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; }
+        #auth-toggle { color: #e94560; cursor: pointer; font-size: 0.9rem; }
+        
+        #chat-screen { display: none; flex-direction: column; height: 100vh; }
+        #header { background: #16213e; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e94560; }
+        #header h2 { color: #e94560; }
+        #header span { font-size: 0.85rem; color: #aaa; }
+        #logout-btn { background: #e94560; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+        
+        #main { display: flex; flex: 1; overflow: hidden; }
+        #sidebar { width: 250px; background: #16213e; border-right: 1px solid #0f3460; display: flex; flex-direction: column; }
+        #sidebar h3 { padding: 15px; color: #e94560; border-bottom: 1px solid #0f3460; }
+        #room-list { flex: 1; overflow-y: auto; }
+        .room-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #0f3460; transition: background 0.2s; }
+        .room-item:hover { background: #0f3460; }
+        .room-item.active { background: #e94560; }
+        #create-room { padding: 10px; border-top: 1px solid #0f3460; display: flex; gap: 8px; }
+        #create-room input { flex: 1; padding: 8px; background: #0f3460; border: none; border-radius: 6px; color: white; font-size: 0.85rem; }
+        #create-room button { background: #e94560; border: none; color: white; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+        
+        #chat-area { flex: 1; display: flex; flex-direction: column; }
+        #room-title { padding: 15px 20px; background: #16213e; border-bottom: 1px solid #0f3460; font-weight: bold; color: #e94560; }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .message { max-width: 70%; padding: 10px 15px; border-radius: 12px; word-wrap: break-word; }
+        .message.mine { align-self: flex-end; background: #e94560; border-bottom-right-radius: 2px; }
+        .message.theirs { align-self: flex-start; background: #16213e; border-bottom-left-radius: 2px; }
+        .message .sender { font-size: 0.75rem; color: #aaa; margin-bottom: 4px; }
+        .message .text { font-size: 0.95rem; }
+        .system-msg { text-align: center; color: #aaa; font-size: 0.8rem; font-style: italic; }
+        #no-room { align-self: center; justify-content: center; color: #aaa; font-size: 1.2rem; }
+        
+        #input-area { padding: 15px 20px; background: #16213e; border-top: 1px solid #0f3460; display: flex; gap: 10px; }
+        #msg-input { flex: 1; padding: 12px; background: #0f3460; border: none; border-radius: 8px; color: white; font-size: 1rem; }
+        #send-btn { background: #e94560; border: none; color: white; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 1rem; }
+    </style>
+</head>
+<body>
+
+<div id="auth-screen">
+    <h1>Chat App</h1>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <div id="username-field" style="display: none;">
+        <input type="text" id="username" placeholder="Username" style="margin-top: 10px;">
+    </div>
+    <button onclick="handleAuth()">Login</button>
+    <p id="auth-toggle" onclick="toggleAuth()">Don't have an account? Register</p>
+    <p id="auth-error" style="color: red; font-size: 0.85rem;"></p>
+</div>
+
+<div id="chat-screen">
+    <div id="header">
+        <h2>Chat App</h2>
+        <span id="logged-in-as"></span>
+        <button id="logout-btn" onclick="logout()">Logout</button>
+    </div>
+    <div id="main">
+        <div id="sidebar">
+            <h3>Rooms</h3>
+            <div id="room-list"></div>
+            <div id="create-room">
+                <input type="text" id="new-room-name" placeholder="New room...">
+                <button onclick="createRoom()">+</button>
+            </div>
+        <div id="chat-area">
+            <div id="room-title">Select a room to start chatting</div>
+            <div id="no-room">Select or create a room!</div>
+            <div id="messages" style="display: none;"></div>
+            <div id="input-area" style="display: none;">
+                <input type="text" id="msg-input" placeholder="Type a message..." onkeypress="if(event.key==='Enter') sendMessage()">
+                <button id="send-btn" onclick="sendMessage()">Send</button>
+            </div>
+    </div>
+
+<script>
+    // Auto-detect server based on current page URL - works for both localhost and ngrok
+    const getServerConfig = () => {
+        const currentHost = window.location.host;
+        
+        // Check if running locally (localhost or 127.0.0.1)
+        if (currentHost.includes('localhost') || currentHost.includes('127.0.0.1')) {
+            return {
+                SERVER: 'http://127.0.0.1:8000',
+                WS_SERVER: 'ws://127.0.0.1:8000'
+            };
+        }
+        
+        // Otherwise assume ngrok - use same host with wss for WebSocket
+        return {
+            SERVER: `https://${currentHost}`,
+            WS_SERVER: `wss://${currentHost}`
+        };
+    };
+
+    const { SERVER, WS_SERVER } = getServerConfig();
+    
+    console.log(`Running in ${SERVER === 'http://127.0.0.1:8000' ? 'LOCAL' : 'NGROK'} mode`);
+    console.log('SERVER:', SERVER, 'WS_SERVER:', WS_SERVER);
+
+    let accessToken = null;
+    let refreshToken = null;
+    let currentUser = null;
+    let currentRoom = null;
+    let socket = null;
+    let isRegister = false;
+
+    function toggleAuth() {
+        isRegister = !isRegister;
+        document.getElementById('username-field').style.display = isRegister ? 'block' : 'none';
+        document.getElementById('auth-toggle').textContent = isRegister ? 'Already have an account? Login' : "Don't have an account? Register";
+    }
+
+    async function handleAuth() {
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value.trim();
+        const errorEl = document.getElementById('auth-error');
+        errorEl.textContent = '';
+
+        try {
+            if (isRegister) {
+                const username = document.getElementById('username').value.trim();
+                const res = await fetch(`${SERVER}/api/accounts/register/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password, password2: password })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    errorEl.textContent = JSON.stringify(data);
+                    return;
+                }
+                accessToken = data.access;
+                refreshToken = data.refresh;
+                currentUser = data.user.username;
+            } else {
+                const res = await fetch(`${SERVER}/api/accounts/login/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    errorEl.textContent = 'Invalid credentials';
+                    return;
+                }
+                accessToken = data.access;
+                refreshToken = data.refresh;
+                
+                const profileRes = await fetch(`${SERVER}/api/accounts/profile/`, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                const profileData = await profileRes.json();
+                currentUser = profileData.username;
+            }
+            showChatScreen();
+        } catch (e) {
+            errorEl.textContent = 'Connection failed. Is server running?';
+        }
+    }
+
+    function showChatScreen() {
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('chat-screen').style.display = 'flex';
+        document.getElementById('logged-in-as').textContent = `👤 ${currentUser}`;
+        loadRooms();
+    }
+
+    async function logout() {
+        await fetch(`${SERVER}/api/accounts/logout/`, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ refresh: refreshToken })
+        });
+        if (socket) socket.close();
+        accessToken = refreshToken = currentUser = currentRoom = socket = null;
+        document.getElementById('auth-screen').style.display = 'flex';
+        document.getElementById('chat-screen').style.display = 'none';
+        document.getElementById('messages').innerHTML = '';
+    }
+
+    async function loadRooms() {
+        const res = await fetch(`${SERVER}/api/chat/rooms/`, {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        const data = await res.json();
+        const list = document.getElementById('room-list');
+        list.innerHTML = '';
+        data.forEach(room => {
+            const div = document.createElement('div');
+            div.className = 'room-item';
+            div.textContent = room.name;
+            div.onclick = () => joinRoom(room, div);
+            list.appendChild(div);
+        });
+    }
+
+    async function createRoom() {
+        const name = document.getElementById('new-room-name').value.trim();
+        if (!name) return;
+        await fetch(`${SERVER}/api/chat/rooms/`, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name, description: '' })
+        });
+        document.getElementById('new-room-name').value = '';
+        loadRooms();
+    }
+
+    async function joinRoom(room, el) {
+        document.querySelectorAll('.room-item').forEach(e => e.classList.remove('active'));
+        el.classList.add('active');
+        currentRoom = room;
+        
+        await fetch(`${SERVER}/api/chat/rooms/${room.id}/join/`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+
+        document.getElementById('room-title').textContent = room.name;
+        document.getElementById('no-room').style.display = 'none';
+        document.getElementById('messages').style.display = 'flex';
+        document.getElementById('input-area').style.display = 'flex';
+        document.getElementById('messages').innerHTML = '';
+
+        await loadHistory(room.id);
+        connectWebSocket(room.name);
+    }
+
+    async function loadHistory(roomId) {
+        const res = await fetch(`${SERVER}/api/chat/rooms/${roomId}/messages/`, {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        const data = await res.json();
+        data.forEach(msg => addMessage(msg.sender.username, msg.content, msg.sender.username === currentUser));
+    }
+
+    function connectWebSocket(roomName) {
+        if (socket) socket.close();
+        socket = new WebSocket(`${WS_SERVER}/ws/chat/${roomName}/?token=${accessToken}`);
+
+        socket.onopen = () => console.log('WebSocket connected');
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'message') {
+                addMessage(data.sender, data.message, data.sender === currentUser);
+            } else if (data.type === 'user_join') {
+                addSystemMessage(`${data.user} joined the room`);
+            } else if (data.type === 'user_leave') {
+                addSystemMessage(`${data.user} left the room`);
+            }
+        };
+        socket.onclose = () => console.log('WebSocket disconnected');
+        socket.onerror = (e) => console.error('WebSocket error', e);
+    }
+
+    function sendMessage() {
+        const input = document.getElementById('msg-input');
+        const msg = input.value.trim();
+        if (!msg || !socket) return;
+        socket.send(JSON.stringify({ message: msg }));
+        input.value = '';
+    }
+
+    function addMessage(sender, text, isMine) {
+        const messages = document.getElementById('messages');
+        const div = document.createElement('div');
+        div.className = `message ${isMine ? 'mine' : 'theirs'}`;
+        div.innerHTML = `
+            ${!isMine ? `<div class="sender">${sender}</div>` : ''}
+            <div class="text">${text}</div>
+        `;
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function addSystemMessage(text) {
+        const messages = document.getElementById('messages');
+        const div = document.createElement('div');
+        div.className = 'system-msg';
+        div.textContent = text;
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+    }
+</script>
+</body>
+</html></parameter>
+</create_file>

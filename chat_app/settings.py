@@ -25,7 +25,16 @@ SECRET_KEY = 'django-insecure-+$e86^+%jlmi=sx%=9z3^jl9808n6ck7+-crmg=iv!2f71_w6*
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    '*',
+    'gymnospermic-nondialectically-seamus.ngrok-free.dev',
+    '127.0.0.1',
+    'localhost',
+]
+CSRF_TRUSTED_ORIGINS = [
+    'https://gymnospermic-nondialectically-seamus.ngrok-free.dev',
+    'http://localhost:8000',
+]
 
 
 # Application definition
@@ -59,7 +68,7 @@ ROOT_URLCONF = 'chat_app.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
